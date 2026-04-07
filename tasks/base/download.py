@@ -1,10 +1,40 @@
 from tqdm import tqdm
+import urllib.parse
 import urllib.request
 import subprocess
 import os
 
+ALLOWED_DOMAINS = (
+    "github.com",
+    "githubusercontent.com",
+    "gitee.com",
+    "coding.net",
+    "ghproxy.com",
+    "gh-proxy.com",
+)
+
+
+def _validate_url(download_url):
+    parsed = urllib.parse.urlparse(download_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
+    hostname = parsed.hostname or ""
+    if not any(hostname == domain or hostname.endswith("." + domain) for domain in ALLOWED_DOMAINS):
+        raise ValueError(f"Untrusted download domain: {hostname}")
+
+
+def _validate_save_path(save_path):
+    real_path = os.path.realpath(save_path)
+    base_dir = os.path.realpath(".")
+    if not real_path.startswith(base_dir + os.sep) and real_path != base_dir:
+        raise ValueError(f"save_path escapes base directory: {save_path}")
+    return real_path
+
 
 def download_with_progress(download_url, save_path):
+
+    _validate_url(download_url)
+    save_path = _validate_save_path(save_path)
 
     aria2_path = os.path.abspath("./assets/binary/aria2c.exe")
     proxies = urllib.request.getproxies()
